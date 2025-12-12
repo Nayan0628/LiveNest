@@ -12,25 +12,36 @@ import recordingRoutes from "./routes/recording.route.js";
 import { connectDB } from "./lib/db.js";
 
 const app = express();
-const PORT = process.env.PORT;
+
+// Use Render / environment port when available, otherwise fallback to 5001 for local dev
+const PORT = process.env.PORT || 5001;
 
 const __dirname = path.resolve();
 
+// FRONTEND_URL: set this in Render (e.g. https://your-frontend.onrender.com) when using two-service setup.
+// Default to localhost Vite dev server in development.
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
+// CORS: allow credentials and accept requests only from your frontend origin.
+// In production this will use FRONTEND_URL; in development it uses the local Vite URL.
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.NODE_ENV === "production" ? FRONTEND_URL : "http://localhost:5173",
     credentials: true, // allow frontend to send cookies
   })
 );
 
+// Parse JSON and cookies
 app.use(express.json());
 app.use(cookieParser());
 
+// Mount API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/recordings", recordingRoutes);
 
+// Serve frontend in production (single-service approach)
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
@@ -39,7 +50,14 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  connectDB();
-});
+// Connect to DB first, then start the server
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to connect to database, server not started.", err);
+    process.exit(1);
+  });
