@@ -2,6 +2,18 @@ import { upsertStreamUser } from "../lib/stream.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
+function getCookieOptions() {
+  return {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true, // prevent XSS
+    // If frontend and backend are same origin, use "strict" or omit.
+    // If frontend is on a different origin (separate domain/subdomain), set COOKIE_SAMESITE=none in Render and ensure HTTPS.
+    sameSite: process.env.COOKIE_SAMESITE || "strict",
+    secure: process.env.NODE_ENV === "production", // required when sameSite='none'
+    // path: "/", // default is fine, include if you need to scope cookie
+  };
+}
+
 export async function signup(req, res) {
   const { email, password, fullName } = req.body;
 
@@ -50,12 +62,8 @@ export async function signup(req, res) {
       expiresIn: "7d",
     });
 
-    res.cookie("jwt", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true, // prevent XSS attacks,
-      sameSite: "strict", // prevent CSRF attacks
-      secure: process.env.NODE_ENV === "production",
-    });
+    // Set cookie using unified options
+    res.cookie("jwt", token, getCookieOptions());
 
     res.status(201).json({ success: true, user: newUser });
   } catch (error) {
@@ -82,12 +90,8 @@ export async function login(req, res) {
       expiresIn: "7d",
     });
 
-    res.cookie("jwt", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true, // prevent XSS attacks,
-      sameSite: "strict", // prevent CSRF attacks
-      secure: process.env.NODE_ENV === "production",
-    });
+    // Set cookie using unified options
+    res.cookie("jwt", token, getCookieOptions());
 
     res.status(200).json({ success: true, user });
   } catch (error) {
@@ -97,7 +101,12 @@ export async function login(req, res) {
 }
 
 export function logout(req, res) {
-  res.clearCookie("jwt");
+  // Clear cookie using the same options so the browser removes it consistently
+  res.clearCookie("jwt", {
+    httpOnly: true,
+    sameSite: process.env.COOKIE_SAMESITE || "strict",
+    secure: process.env.NODE_ENV === "production",
+  });
   res.status(200).json({ success: true, message: "Logout successful" });
 }
 
