@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Login to Docker Hub
@@ -19,20 +19,11 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 🔹 Build Backend
-      - name: Build and Push Backend Image
+      # Build Backend Image
+      - name: Build and Push Backend
         uses: docker/build-push-action@v4
         with:
           context: ./backend
           file: ./backend/Dockerfile
           push: true
           tags: nayan8970/livenest-backend:latest
-
-      # 🔹 Build Frontend
-      - name: Build and Push Frontend Image
-        uses: docker/build-push-action@v4
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
-          push: true
-          tags: nayan8970/livenest-frontend:latest
